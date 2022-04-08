@@ -1,0 +1,13 @@
+After downloading, initialize environment with setup.sh
+The python script does not require any fancy libraries. Example uses below:
+
+python run_experiments.py block htn 5 1 2 3 4
+Runs the HTN planner on Blockworld 5 times for problems of size 1,2,3,4.
+
+python run_experiments.py sat domain_independent 3 10 20
+Runs the Domain Independent planner on the Satellite Domain 3 times each for problems of size 10, 20.
+
+You can optionally specify the additional Sat Domain parametrs with:
+python run_experiments.py sat domain_independent 3 10 20 --sat_params 2 2 2 2
+
+
