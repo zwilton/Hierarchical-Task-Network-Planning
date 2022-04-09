@@ -6,6 +6,7 @@ import timeit
 import re
 sys.path.append('./GTPyhop')
 import gtpyhop as gtpyhop
+sys.setrecursionlimit(5000)
 
 parser = argparse.ArgumentParser(description='Setup Experiments')
 parser.add_argument('domain',help="Choose either block or sat")
@@ -13,7 +14,7 @@ parser.add_argument('planner', help="Choose either htn or domain_independent")
 parser.add_argument('repeats', help="Number of times each experiment will be repeated", type=int)
 parser.add_argument('schedule',  nargs="+", help="The trial sizes, as an array", type=int)
 parser.add_argument('--seed', type=int, default=10)
-#parser.add_argument('--sat_params', nargs="+", help="The extra parameters used in the Satellite domain: max_instuments, num_modes, num_targets, num_observations", default=[10,10,10,10])
+parser.add_argument('--sat_params', nargs="+", help="The extra parameters used in the Satellite domain: num_satellites, num_modes, num_instruments, num_observations", default= [10, 5, 10, 2])
 args = parser.parse_args()
 ##print(args.domain, args.planner, args.repeats, args.schedule, args.sat_params)
 
@@ -59,12 +60,15 @@ def create_block_problem(n, cur_repeat):
 
 def create_sat_problem(n):
     seed = random.random() * 100000
-    #max_instuments = args.sat_params[0]
-    #num_modes = args.sat_params[1]
-    #num_targets = args.sat_params[2]
-    #num_observations = args.sat_params[3]
-    #stream = os.popen(f"./satellite-generator/satgen -n {seed} {n} {max_instuments} {num_modes} {num_targets} {num_observations}")
-    stream = os.popen(f"./satellite-generator/satgen -n {seed} {n} {n} {n} {n} {n}")
+    if args.sat_params is not None:
+        max_instuments = args.sat_params[2]
+        num_satellites = args.sat_params[0]
+        num_modes = args.sat_params[1]
+        num_observations = args.sat_params[3]
+        num_targets = n
+        stream = os.popen(f"./satellite-generator/satgen -n {seed} {num_satellites} {max_instuments} {num_modes} {num_targets} {num_observations}")
+    else:
+        stream = os.popen(f"./satellite-generator/satgen -n {seed} {n} {n} {n} {n} {n}")
     return stream.read()
 
 def write_current_problem(problem):
@@ -107,8 +111,9 @@ def run_block_problem_htn(n, current_repeat):
     plan = gtpyhop.find_plan(state, [('achieve', goal)])
     time = timeit.default_timer() - start_time
     length = len(plan)
-    #print("PLAN")
-    #print(plan)
+    f = open("results_data/block_htn.csv", "a")
+    f.write(f"{n}, {time}, {length}\n")
+    f.close()
 
 
     
@@ -128,7 +133,7 @@ def run_htn_block_experiment():
 
 def run_sat_problem_htn(n):
     problem = create_sat_problem(n)
-    #print(problem)
+    print(problem)
     state = gtpyhop.State('state')
     #Create starting state
     s_0_text = problem[problem.find(":init") : problem.find(")\n(:goal")]
@@ -199,20 +204,10 @@ def run_sat_problem_htn(n):
     gtpyhop.verbose = 3
     plan = gtpyhop.find_plan(state, [('achieve', goal)])
     time = timeit.default_timer() - start_time
-    #verified = True
-    #print(state.have_image)
-    #print(goal.have_image)
-    #print(plan)
-    #for image_goal in goal.have_image :
-    #    if image_goal not in state.have_image:
-    #        print(f"Don't have {image_goal}")
-    #        verified = False
-    #for sat, dest in goal.pointing.items():
-    #    if state.pointing[sat] != dest:
-    #        print(f"{sat} Has not moved to {dest}")
-    #        verified = False
-    #print(verified)
-    #length = len(plan)
+    length = len(plan)
+    f = open("results_data/sat_htn.csv", "a")
+    f.write(f"{n}, {time}, {length}, {args.sat_params[0]}, {args.sat_params[1]}, {args.sat_params[2]}, {args.sat_params[3]}\n")
+    f.close()
 
 
 #Start Experiments
@@ -229,7 +224,7 @@ if args.planner == "domain_independent":
     else:
         for n in args.schedule: 
             for repeat in range(1,args.repeats+1):
-                write_current_problem(create_block_problem(n,repeat))
+                write_current_problem(create_sat_problem(n))
                 run_domain_independent_experiment("Metric-FF/ff -o SATDomain.pddl -f current_problem.pddl -E -g 1 -h 5", "results_data/sat_ind.csv", n)
 #HTN Problems
 else :
